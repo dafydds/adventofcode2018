@@ -1,6 +1,6 @@
 from collections import Counter
 
-with open('input_day2.txt', 'r')  as fp:
+with open('day2_input.txt', 'r')  as fp:
     lines = fp.readlines()
 
 vals = [x.strip() for x in lines]
