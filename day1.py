@@ -23,8 +23,8 @@ def get_repeated_value(vals):
         if break_while:
             break
             
- answer2 = get_repeated_value(vals)
- print(answer2)
+answer2 = get_repeated_value(vals)
+print(answer2)
 
 
 
