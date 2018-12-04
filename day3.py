@@ -76,6 +76,7 @@ def find_separate_rects(lines : List[str],
 for x in find_separate_rects(test_lines, test_overlapping_pts):
     assert x == 3
 
+print("Part 2:")
 for x in find_separate_rects(lines, overlapping_pts):
     print(x)
 
