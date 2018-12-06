@@ -3,11 +3,11 @@ from dateutil.parser import parse
 from datetime import datetime
 import collections
 
-with open('day4_input.txt', 'r')  as fp:
+with open('data/day4_input.txt', 'r')  as fp:
     lines = fp.readlines()
 
 
-with open('day4_test_input.txt', 'r')  as fp:
+with open('data/day4_test_input.txt', 'r')  as fp:
     test_lines = fp.readlines()
 
 

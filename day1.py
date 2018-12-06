@@ -1,4 +1,4 @@
-with open('day1_input.txt', 'r')  as fp:
+with open('data/day1_input.txt', 'r')  as fp:
     lines = fp.readlines()
     
 vals = [int(x) for x in lines]

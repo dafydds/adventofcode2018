@@ -48,7 +48,7 @@ assert min_with_one_removed(test_string) == 4
 test_string = "aBbA"
 assert polymer(test_string) == ""
 
-with open('day5_input.txt', 'r')  as fp:
+with open('data/day5_input.txt', 'r')  as fp:
     my_string = fp.read()
 
 part_a = len(polymer(my_string))

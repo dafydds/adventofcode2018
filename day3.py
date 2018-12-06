@@ -1,6 +1,6 @@
 from typing import List, Tuple, Iterable, Set
 
-with open('day3_input.txt', 'r')  as fp:
+with open('data/day3_input.txt', 'r')  as fp:
     lines = fp.readlines()
 
 class Rect:
