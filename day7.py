@@ -1,4 +1,4 @@
-from typing import Tuple, List, Iterable
+from typing import Tuple, List, Iterable, Callable
 from collections import Counter, OrderedDict
 import re
 
@@ -51,9 +51,7 @@ class Worker:
 
 class DependencyGraph:
     def __init__(self, 
-                instructions : List[Tuple[str, str]], 
-                workers : List[Worker],
-                job_length_fn):  
+                instructions : List[Tuple[str, str]]):  
         """build dependency structure as a dict of dicts"""  
         a = dict()
         for i in instructions:
@@ -68,9 +66,6 @@ class DependencyGraph:
                 a[i[0]] = dict()
 
         self.graph = a
-        self.workers = workers
-        self.second = -1
-        self._job_length_fn = job_length_fn
 
     def get_available_instructions(self):
         """get next available instructions"""
@@ -80,48 +75,65 @@ class DependencyGraph:
                 instructions.append(k)
         return instructions
 
+    def remove_dependency(self, step : str) -> None:
+        for k in self.graph:
+            if step in self.graph[k]:
+                del self.graph[k][step]
+
+    def remove(self, step : str) -> None:
+        del self.graph[step]
+
+
+class JobManager:
+    def __init__(self,
+                graph : DependencyGraph,
+                workers : List[Worker],
+                job_estimate_func : Callable):
+        self._graph = graph
+        self._workers = workers
+        self._job_estimate_func = job_estimate_func
+        self.second = -1
 
     def tick(self) -> List[str]:
         self.second += 1
         
-        busy_workers =  len([w for w in self.workers 
+        busy_workers =  len([w for w in self._workers 
                             if w.state(self.second) == State.BUSY])
 
-        if len(self.graph) == 0 and busy_workers == 0:
+        if len(self._graph.graph) == 0 and busy_workers == 0:
             return None
 
         # check workers to see if they have produced anything by the start of this second
         outputs = list()
-        for w in self.workers:
+        for w in self._workers:
             out = w.output(self.second)
             if out is not None:
                 outputs.append(out)
 
         # remove the completed instructions from the dependencies of others
         for step in outputs:    
-            for k in self.graph:
-                if step in self.graph[k]:
-                    del self.graph[k][step]
+            self._graph.remove_dependency(step)
 
-        next_steps = self.get_available_instructions()
-        free_workers =  [w for w in self.workers 
+        next_steps = self._graph.get_available_instructions()
+        free_workers =  [w for w in self._workers 
                             if w.state(self.second) == State.AVAILABLE]
 
         # distribute the jobs amongst the free workers
         for x, worker in zip(next_steps, free_workers):
-            worker.give_job(x, self.second, self._job_length_fn(x))
-            del self.graph[x]
+            worker.give_job(x, self.second, self._job_estimate_func(x))
+            self._graph.remove(x)
 
         return sorted(outputs, key=lambda x: x)
+
 
 def part_a(my_lines, job_length_fn):
     parsed_lines = parse_lines(my_lines)
     w = Worker()
-    graph = DependencyGraph(parsed_lines, [w], job_length_fn)
-
+    graph = DependencyGraph(parsed_lines)
+    manager = JobManager(graph, [w], job_length_fn)
     output_string = ''
     while (True):
-        s = graph.tick()
+        s = manager.tick()
         if s is None:
             break
         else:
@@ -139,17 +151,18 @@ def part_b(my_lines, job_time_fn, num_workers):
     workers = list()
     for i in range(num_workers):
         workers.append(Worker())
-    graph = DependencyGraph(parsed_lines, workers, job_time_fn)
+    graph = DependencyGraph(parsed_lines)
+    manager = JobManager(graph, workers, job_time_fn)
 
     output_string = ''
     while (True):
-        s = graph.tick()
+        s = manager.tick()
         if s is None:
             break
         elif len(s) > 0:
             output_string += ''.join(s)
 
-    return (output_string, graph.second - 1)
+    return (output_string, manager.second - 1)
 
 
 test_part_b = part_b(test_lines, test_job_time, 2)
