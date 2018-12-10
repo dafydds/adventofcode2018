@@ -65,7 +65,7 @@ def gradient(particles : List[Particle], t : int):
     f1 = rect_metric([x.get_position(t + 1) for x in particles])
     return f1 - f0
 
-def get_potential_messages(particles : List[Particle], distance_threshold : int):
+def get_message(particles : List[Particle]):
     t = 0
     iterations = 0
     while (True):
@@ -73,19 +73,18 @@ def get_potential_messages(particles : List[Particle], distance_threshold : int)
         coords = [x.get_position(t) for x in particles]
         d = rect_metric(coords)
         grad = gradient(particles, t)
-        if d < distance_threshold:
-            yield (coords, t)
+        if grad >= 0:
+            return (coords, t)
         t += max(int( -d / grad  * 0.2), 1)
-        if iterations >= 400:
-            break
 
 
-def print_grid(top_left : Coord, position_coords : List[Coord], grid_x : int, grid_y : int):
-
+def print_grid(position_coords : List[Coord]):
+    top_left = get_top_left(position_coords)
+    bottom_right = get_bottom_right(position_coords)
     position_set = set(position_coords)
-    for j in range(top_left.y - grid_y, top_left.y + 2):
+    for j in range(bottom_right.y - 2, top_left.y + 2):
         line = ""
-        for i in range(top_left.x, top_left.x + grid_x):
+        for i in range(top_left.x - 2, bottom_right.x + 2):
             c = Coord(i, j)
             s = "#" if c in position_set else "."
             line += s
@@ -93,7 +92,7 @@ def print_grid(top_left : Coord, position_coords : List[Coord], grid_x : int, gr
     pass
 
 
-for c, t in get_potential_messages(particles, 80):
-    print_grid(get_top_left(c), c, 90, 10)
-    print("Time:", t)
+c, t = get_message(particles)
+print_grid(c)
+print("Time:", t)
 
