@@ -65,7 +65,7 @@ def gradient(particles : List[Particle], t : int):
     f1 = rect_metric([x.get_position(t + 1) for x in particles])
     return f1 - f0
 
-def get_message(particles : List[Particle]):
+def get_message(particles : List[Particle], learning_rate : float):
     t = 0
     iterations = 0
     while (True):
@@ -75,7 +75,7 @@ def get_message(particles : List[Particle]):
         grad = gradient(particles, t)
         if grad >= 0:
             return (coords, t)
-        t += max(int( -d / grad  * 0.2), 1)
+        t += max(int( -d / grad  * learning_rate), 1)
 
 
 def print_grid(position_coords : List[Coord]):
@@ -92,7 +92,7 @@ def print_grid(position_coords : List[Coord]):
     pass
 
 
-c, t = get_message(particles)
+c, t = get_message(particles, 0.5)
 print_grid(c)
 print("Time:", t)
 
