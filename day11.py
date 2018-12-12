@@ -68,6 +68,8 @@ print(part_a)
 a_x, a_y = part_a
 assert a_x == 33 and a_y == 45
 
+
+# this bit takes a few minutes at the moment, not optimised
 part_b = get_max_x_y_m(N, power_matrix)
 print(part_b)
 x, y, m = part_b
