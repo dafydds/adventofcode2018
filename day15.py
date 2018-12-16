@@ -20,6 +20,11 @@ class Creature:
     def __repr__(self):
         return str(self.creature_type) + " " + str(self.id) + ": " + str((self.x, self.y))
 
+    def __eq__(self, other):
+        print("A __eq__ called")
+        return self.id == other.id
+
+
     def attack(self, creature):
         assert self.creature_type != creature.creature_type
         creature.hit_points -= 3
@@ -55,7 +60,7 @@ class Grid:
         for j in range(self.length):
             for i in range(self.width):
                 self.matrix[j, i] = Grid.LOOKUP[lines[j][i]]
-                if Grid.LOOKUP[lines[j][i]] == "#":
+                if Grid.LOOKUP[lines[j][i]] == 1:
                     self.walls.add((i,j))
 
     def value(self, x : int, y : int) -> str:
@@ -86,39 +91,39 @@ class Grid:
 
 def min_distance(grid : Grid, coords, coords_dest, creatures):
     visited_points = set()
-    path = list()
+    creature_points = set()
     min_dists = defaultdict(lambda : 1000)
     min_dists[coords] = 0
 
-    for x in g.walls:
-        visited_points.add(x)
-        min_dists[x] = 1000
     for c in creatures:
         if (c.x, c.y) != coords and (c.x, c.y) != coords_dest:
-            visited_points.add((c.x, c.y))
-            min_dists[(c.x, c.y)] = 1000
+            creature_points.add((c.x, c.y))
     current_node = coords
     to_visit_next = list()
 
     while True:
         x, y = current_node
-
         if current_node == coords_dest:
             return (True, min_dists)
         moves = [(x + 1, y), (x - 1, y), (x, y - 1), (x, y + 1)]
 
         for m in moves:
+            if m in g.walls or m in creature_points:
+                continue
             x_m, y_m = m
-            if grid.is_feasible(x_m, y_m) and m not in visited_points:
+            if m not in visited_points:
                 val = grid.value(x_m, y_m)
-                if val == '.':
-                    min_dists[m] = min(min_dists[current_node] + 1, min_dists[m] )
+                if val == '.' or (x_m, y_m) == coords_dest:
+                    if  min_dists[current_node] + 1 <= min_dists[m]:
+                        min_dists[m] = min_dists[current_node] + 1
+                        # do something here, such as store the distances of all squares
+
                     to_visit_next.append(m)
 
         visited_points.add(current_node)
 
         # repeat with the min distance coord
-        to_visit_next.sort( key=lambda x: -min_dists[x])
+        #to_visit_next.sort( key=lambda x: min_dists[x])
         if len(to_visit_next) > 0:
             current_node = to_visit_next.pop()
         else:
@@ -130,7 +135,7 @@ def parse_file(f):
         lines = [x.rstrip() for x in fp.readlines()]
         return lines
 
-lines = parse_file("data/day15_test_input.txt")
+lines = parse_file("data/day15_input.txt")
 
 g = Grid(lines)
 g.print_me()
@@ -151,7 +156,7 @@ def manhattan_dist(coord1, coord2):
 
 def get_in_range_coords(grid, enemies):
     for enemy in enemies:
-        moves = [(enemy.x + 1, enemy.y), (enemy.x - 1, enemy.y), (enemy.x, enemy.y - 1), (enemy.x, enemy.y + 1)]
+        moves = [(enemy.x, enemy.y - 1),  (enemy.x - 1, enemy.y),(enemy.x + 1, enemy.y),  (enemy.x, enemy.y + 1)]
         for m in moves:
             x, y = m
             if grid.is_feasible(x, y):
@@ -161,9 +166,9 @@ def get_in_range_coords(grid, enemies):
 
 def get_reachable(grid, enemies, actor, creatures):
     for c in get_in_range_coords(grid, enemies):
-        is_reachable, dists = min_distance(grid, (actor.x, actor.y), c, creatures)
+        is_reachable, dists = min_distance(grid, c, (actor.x, actor.y), creatures)
         if is_reachable:
-            yield (c, dists)
+            yield ((actor.x, actor.y), c, dists)
 
 
 def get_distance(from_coords, lookup):
@@ -175,23 +180,22 @@ def is_next_to_enemy(a, grid):
     for move in moves:
         x, y = move
         val = grid.value(x,y)
-        if a.creature_type == 'G' and val == 'E':
+        if a.creature_type == 'G' and a.state == State.ALIVE and val == 'E':
             return True
-        if a.creature_type == 'E' and val == 'G':
+        if a.creature_type == 'E' and a.state == State.ALIVE and val == 'G':
             return True  
     return False
         
         
 
 def get_next_move(from_coords, lookup, grid, creatures):
-    dist_dict = lookup
     dist  = lookup[from_coords]
-    vals = [x for x in dist_dict if dist_dict[x] == 1]
-    vals.sort(key=lambda x: x[1] * 10000 + x[0])
-    for val in vals:
-        aa, bb =  min_distance(grid, val, from_coords, creatures)
-        if bb[from_coords] == dist - 1:
-            return val
+    x, y = from_coords
+    moves = [(x, y - 1), (x - 1, y), (x + 1, y), (x, y + 1)]
+
+    for m in moves:
+        if (lookup[m] == dist - 1):
+            return m
 
 def move(from_coord, to_coord, grid):
     x, y = from_coord.x, from_coord.y
@@ -205,16 +209,14 @@ def move(from_coord, to_coord, grid):
 
 def move_creature(c, enemies, g, creatures):
     rs = list()
-    for coord, dists in get_reachable(g, enemies, c, creatures):
-        rs.append((coord, dists, dists[coord], get_next_move(coord, dists, g, creatures)))
+    for c_from, c_to, dists in get_reachable(g, enemies, c, creatures):
+        rs.append((c_from, c_to, dists, dists[c_from], get_next_move(c_from, dists, g, creatures)))
 
     if (len(rs) > 0):
-        min_dist = min([x[2] for x in rs])
-        options = sorted([x for x in rs if x[2] == min_dist], key=lambda x: x[0][1] * 10000 + x[0][0])
-        #print(c, options[0][0], options[0][2], options[0][3])
-        g.move((c.x, c.y), options[0][3])
-        c.move(options[0][3])
-        #g.print_me()
+        min_dist = min([x[3] for x in rs])
+        options = sorted([x for x in rs if x[3] == min_dist], key=lambda x: x[1][1] * 10000 + x[1][0])
+        g.move((c.x, c.y), options[0][4])
+        c.move(options[0][4])
         pass
 
 def get_target(a, enemies, grid):
@@ -226,7 +228,7 @@ def get_target(a, enemies, grid):
     if (len(possible_targets) == 0):
         return None
     
-    possible_targets.sort(key=lambda c : c.hit_points * 10e6 + (c.x + c.y * 1000))
+    possible_targets.sort(key=lambda c : c.hit_points * 10e9 + (c.x + c.y * 1000))
     return possible_targets[0]
 
 round_idx = 0
@@ -239,24 +241,37 @@ while(not end_game):
     elves = [x for x in creatures if x.creature_type == 'E']
     goblins = [x for x in creatures if x.creature_type == 'G']
 
+    print(sum([x.hit_points for x in creatures if (x.creature_type== 'G' and x.state == State.ALIVE)]))
+
     # move the creatures
     for c in creatures:
-        enemies = elves if c.creature_type == 'G' else goblins
-        if len([x for x in enemies if x.state == State.ALIVE]) == 0:
-            end_game = True
-            complete_round = False
-            break
-        
-        if is_next_to_enemy(c, g):
-            bla  = 1#print(c, "Stay still")
-        else:
-            move_creature(c, enemies, g, creatures)
 
-        target = get_target(c, enemies, g)
-        if target is not None:
-            c.attack(target)
-            if target.state == State.DEAD:
-                g.remove((target.x, target.y))
+        if c.state == State.ALIVE:
+            enemies = elves if c.creature_type == 'G' else goblins
+            enemies = [x for x in enemies if x.state == State.ALIVE]
+            if len([x for x in enemies if x.state == State.ALIVE]) == 0:
+                end_game = True
+                complete_round = False
+                break
+            
+            if not is_next_to_enemy(c, g):
+                move_creature(c, enemies, g, creatures)
+
+            target = get_target(c, enemies, g)
+            if target is not None:
+                c.attack(target)
+                if target.state == State.DEAD:
+                    g.remove((target.x, target.y))
+                    if len([x for x in enemies if x.state == State.ALIVE]) == 0:
+                        end_game = True
+                        complete_round = False
+                        break
+            else:
+                a = 1
+                if len([x for x in enemies if x.state == State.ALIVE]) == 0:
+                    end_game = True
+                    complete_round = False
+                    break
 
     if complete_round:
         round_idx += 1
@@ -267,5 +282,4 @@ while(not end_game):
 
 print(round_idx)
 print(sum( [x.hit_points for x in creatures if x.state == State.ALIVE]))
-
 print(round_idx * sum( [x.hit_points for x in creatures if x.state == State.ALIVE]))
