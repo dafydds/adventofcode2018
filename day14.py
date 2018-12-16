@@ -1,6 +1,8 @@
 from typing import List, Callable
 import timeit
+import numba
 
+@numba.jitclass
 class Elf:
     def __init__(self, idx, recipies):
         self._idx = idx
@@ -26,6 +28,7 @@ def get_next_recipies(total : int) -> List[int]:
 def part_a_stopping_condition(recipies, stopping_value) -> bool:
     return (len(recipies) == stopping_value + 10)
 
+@numba.jit
 def magic( aList, base=10 ):
     n= 0
     l = len(aList)
@@ -57,7 +60,6 @@ def loop(stopping_value : int, stopping_func : Callable, output_func : Callable)
         if stopping_func(recipies, stopping_value):
             return output_func(recipies)
 
-
 def part_b_loop(stopping_value : int, elves : List[Elf], recipies : List[int]) -> str:
     val_len = len(str(stopping_value))
     while (True):
@@ -73,7 +75,20 @@ def part_b_loop(stopping_value : int, elves : List[Elf], recipies : List[int]) -
             m = magic(recipies[(-val_len - i):(len(recipies) - i)])
             if m == stopping_value:
                 return str(len(recipies) - val_len - i)
-    
+
+
+
+@numba.jit(nopython=True)
+def test(mylist):
+    for i in range(1000000):
+        mylist.append(i)
+    return len(mylist)
+
+
+
+a = [5]
+bla = test(a)
+
 recipies = [3, 7]
 elves = [ Elf(0, recipies), Elf(1, recipies) ]
 
